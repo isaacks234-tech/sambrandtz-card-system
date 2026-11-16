@@ -14,4 +14,85 @@ document.querySelectorAll("[data-delete]").forEach(b=>b.onclick=async()=>{if(con
 }
 function showForm(c){const area=document.getElementById("formArea");area.innerHTML=`<div class="panel"><h2>${c?"Hariri kadi":"Kadi mpya"}</h2>${cardForm(c||{})}</div>`;document.getElementById("cancelForm").onclick=()=>area.innerHTML="";document.getElementById("cardForm").onsubmit=async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));try{if(c)await api("/api/cards/"+c.slug,{method:"PUT",body:JSON.stringify(body)});else await api("/api/cards",{method:"POST",body:JSON.stringify(body)});dashboard()}catch(x){alert(x.message)}}}
 async function publicCard(slug){try{const {card:c}=await api("/api/public/"+encodeURIComponent(slug));const url=site+"/?card="+encodeURIComponent(c.slug);const qr="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data="+encodeURIComponent(url);const wa=c.whatsapp?`https://wa.me/${c.whatsapp.replace(/\D/g,"")}`:"";app.innerHTML=`<article class="public-card"><h1>SAMBRANDTZ</h1><div class="muted" style="color:#ccc">DIGITAL BUSINESS CARD</div>${c.logo_url?`<img class="avatar" src="${esc(c.logo_url)}" alt="Logo" onerror="this.style.display='none'">`:""}<h2>${esc(c.business_name)}</h2><p>${esc(c.owner_name)}</p><p>${esc(c.services).replace(/\n/g,"<br>")}</p><div class="links">${wa?`<a href="${esc(wa)}" target="_blank" rel="noopener">WHATSAPP</a>`:""}${c.instagram?`<a href="${esc(c.instagram.startsWith("http")?c.instagram:"https://instagram.com/"+c.instagram.replace(/^@/,""))}" target="_blank" rel="noopener">INSTAGRAM</a>`:""}${c.facebook?`<a href="${esc(c.facebook.startsWith("http")?c.facebook:"https://facebook.com/"+c.facebook)}" target="_blank" rel="noopener">FACEBOOK</a>`:""}</div><img class="qr" src="${qr}" alt="QR code ya kadi"><p class="muted" style="color:#ddd">SCAN TO CONNECT</p><button class="btn" id="share">SHARE DIGITAL CARD</button><button class="btn light" id="copy">COPY LINK</button></article>`;document.getElementById("share").onclick=async()=>{if(navigator.share)await navigator.share({title:c.business_name,url});else await navigator.clipboard.writeText(url)};document.getElementById("copy").onclick=async()=>{await navigator.clipboard.writeText(url);alert("Link imenakiliwa")}}catch(e){app.innerHTML=`<section class="panel"><h2>Kadi haijapatikana</h2><p>${esc(e.message)}</p><a href="/">Rudi mwanzo</a></section>`}}
-(async()=>{const slug=new URLSearchParams(location.search).get("card");if(slug)return publicCard(slug);try{await api("/api/me");await dashboard()}catch{try{await api("/api/cards");await dashboard()}catch(e){if(e.message.includes("D1")||e.message.includes("configured"))app.innerHTML=`<section class="panel"><h2>Usanidi haujakamilika</h2><p>${esc(e.message)}</p></section>`;else{try{const r=await fetch("/api/setup",{method:"POST",headers:{"content-type":"application/json"},body:"{}"});if(r.status===409)renderLogin();else renderSetup()}catch{renderLogin()}}}}})();
+(async()=>{function demoCard(){
+  const c = {
+    business_name: "SAMBRANDTZ DIGITAL",
+    owner_name: "SAM BRANDTZ",
+    services: "Graphic Design\nPhotography\nVideo Production",
+    whatsapp: "255747906030",
+    instagram: "sambrandtz_",
+    facebook: "https://facebook.com/"
+  };
+
+  const url = site + "/?card=demo";
+  const qr = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(url);
+
+  app.innerHTML = `
+    <article class="public-card">
+      <h1>SAMBRANDTZ</h1>
+      <div class="muted">DIGITAL BUSINESS CARD</div>
+      <h2>${esc(c.business_name)}</h2>
+      <p>${esc(c.owner_name)}</p>
+      <p>${esc(c.services).replace(/\n/g,"<br>")}</p>
+      <div class="links">
+        <a href="https://wa.me/${c.whatsapp}" target="_blank">WHATSAPP</a>
+        <a href="https://instagram.com/${c.instagram}" target="_blank">INSTAGRAM</a>
+        <a href="${c.facebook}" target="_blank">FACEBOOK</a>
+      </div>
+      <img class="qr" src="${qr}" alt="QR Code">
+      <p>SCAN TO CONNECT</p>
+      <button class="btn" id="shareDemo">SHARE DIGITAL CARD</button>
+      <button class="btn light" id="copyDemo">COPY LINK</button>
+    </article>
+  `;
+
+  document.getElementById("shareDemo").onclick = async () => {
+    if(navigator.share) await navigator.share({title:c.business_name,url});
+    else {
+      await navigator.clipboard.writeText(url);
+      alert("Link imenakiliwa");
+    }
+  };
+
+  document.getElementById("copyDemo").onclick = async () => {
+    await navigator.clipboard.writeText(url);
+    alert("Link imenakiliwa");
+  };
+}
+
+(async()=>{
+  const slug = new URLSearchParams(location.search).get("card");
+
+  if(slug === "demo"){
+    demoCard();
+    return;
+  }
+
+  if(slug) return publicCard(slug);
+
+  try{
+    await api("/api/me");
+    await dashboard();
+  }catch{
+    try{
+      await api("/api/cards");
+      await dashboard();
+    }catch(e){
+      if(e.message.includes("D1") || e.message.includes("configured")){
+        app.innerHTML = `<section class="panel"><h2>Usanidi haujakamilika</h2><p>${esc(e.message)}</p></section>`;
+      }else{
+        try{
+          const r = await fetch("/api/setup",{
+            method:"POST",
+            headers:{"content-type":"application/json"},
+            body:"{}"
+          });
+          if(r.status === 409) renderLogin();
+          else renderSetup();
+        }catch{
+          renderLogin();
+        }
+      }
+    }
+  }
+})();
